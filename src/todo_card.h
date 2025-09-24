@@ -5,6 +5,9 @@
 #pragma once
 #include <string>
 #include "glm/vec4.hpp"
+#include <chrono>
+#include <iomanip>
+#include <utility>
 
 
 namespace todo {
@@ -22,17 +25,46 @@ namespace todo {
         std::string title;
         std::string description;
         CardStatus status;
-        bool completed;
+        int sequence;
+        int projectId;
+        std::string createdAt;
+        std::string completedAt;
         glm::vec4 color{};
 
-        TodoCard(const int id, std::string title, std::string desc, const CardStatus status, const bool completed = false)
-            : id(id), title(std::move(title)), description(std::move(desc)), status(status)
-              , completed(completed)
+        // Default constructor
+        TodoCard() : id(-1), status(CardStatus::Todo), sequence(-1), projectId(0)
+        {
+            color = glm::vec4(0.3f, 0.3f, 0.8f, 1.0f);
+        }
+
+        TodoCard(const int _id, std::string _title, std::string _desc, const CardStatus _status,
+                 const int _sequence = -1, const int _projectId = 0, std::string _createdAt = "",
+                 std::string _completedAt = "")
+            : id(_id), title(std::move(_title)), description(std::move(_desc)), status(_status)
+              , sequence(_sequence), projectId(_projectId),
+              createdAt(std::move(_createdAt)), completedAt(std::move(_completedAt))
         {
             // Assign different colors based on completion status
-            color = completed ? glm::vec4(0.2f, 0.8f, 0.2f, 1.0f) : glm::vec4(0.3f, 0.3f, 0.8f, 1.0f);
+            color = glm::vec4(0.3f, 0.3f, 0.8f, 1.0f);
         }
     };
+
+    // Convert std::chrono::system_clock::time_point to string
+    inline std::__iom_t10<char> timePointToString(const std::chrono::system_clock::time_point &tp)
+    {
+        auto in_time_t = std::chrono::system_clock::to_time_t(tp);
+        return std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%S");
+    }
+
+    // Convert string to std::chrono::system_clock::time_point
+    inline std::chrono::system_clock::time_point stringToTimePoint(const std::string &str)
+    {
+        std::tm tm = {};
+        std::istringstream ss(str);
+        ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+        return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+    }
+
 
     inline int statusToInt(CardStatus status)
     {

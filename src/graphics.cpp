@@ -12,6 +12,7 @@
 #include <iostream>
 #include <set>
 
+#include "utilities.h"
 #include "spdlog/spdlog.h"
 
 static std::vector<char> readFile(const std::string &filename)
@@ -248,7 +249,6 @@ namespace todo {
         {
             throw std::runtime_error("validation layers requested, but not available!");
         }
-        spdlog::info("enabling validation layers: {}", enableValidationLayers);
 
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -727,8 +727,8 @@ namespace todo {
 
     void Graphics::createGraphicsPipeline()
     {
-        auto vertShaderCode = readFile("shader.vert.spv");
-        auto fragShaderCode = readFile("shader.frag.spv");
+        auto vertShaderCode = readFile(getResourcesPath() + "/shaders/shader.vert.spv");
+        auto fragShaderCode = readFile(getResourcesPath() + "/shaders/shader.frag.spv");
 
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);

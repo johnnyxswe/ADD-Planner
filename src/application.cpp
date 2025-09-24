@@ -5,13 +5,19 @@
 #include "application.h"
 #include "card_database.h"
 #include <set>
-#include "spdlog/spdlog.h"
-#include <fstream>
 #include "graphics.h"
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
 #include "imgui_renderer.h"
-#include "todo_card.h"
+
+
+#include "audio_engine.h"
+
+#ifdef __APPLE__
+#include <GLFW/glfw3.h>
+#include <objc/objc.h>
+#include <objc/message.h>
+#endif
 
 static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
 {
@@ -21,29 +27,31 @@ static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
 
 
 namespace todo {
+    void Application::reloadAppState()
+    {
+        loadCards();
+        loadProjects();
+    }
+    void Application::loadCards()
+    {
+        cards_.clear();
+        cards_ = db_.getAllCards();
+    }
+
+    void Application::loadProjects()
+    {
+        projects_.clear();
+        projects_ = db_.getAllProjects();
+        projects_.push_back(defaultProject_);
+    }
+
     void Application::run()
     {
         initWindow();
 
         // Initialize database
-        auto cards = db_.getAllCards();
-        for (const auto &c: cards)
-        {
-            printf("id=%d title=%s desc=%s status=%d completed=%d\n", c.id, c.title.c_str(), c.description.c_str(),
-                   c.status, c.completed);
-            switch (c.status)
-            {
-                case CardStatus::Todo: todoCards_.emplace_back(c);
-                    break;
-                case CardStatus::InProgress: inProgressCards_.emplace_back(c);
-                    break;
-                case CardStatus::Done: doneCards_.emplace_back(c);
-                    break;
-                default: todoCards_.emplace_back(c);
-                    break;
-            }
-        }
-
+        loadCards();
+        loadProjects();
 
         // Initialize graphics system
         graphics_ = std::make_unique<Graphics>(window_);
@@ -53,6 +61,18 @@ namespace todo {
         imguiRenderer_ = std::make_unique<ImGuiRenderer>(graphics_.get(), this);
         imguiRenderer_->initialize();
 
+        // Initialize sound system
+        if (!audio_.initialize())
+        {
+            spdlog::error("Failed to initialize audio engine!");
+            throw std::runtime_error("Failed to initialize audio engine!");
+        }
+
+        if (!audio_.loadSound("timer_finished", getResourcesPath() + "sounds/ringtone_fixed.wav"))
+        {
+            spdlog::error("Failed to load sound!");
+        }
+
         mainLoop();
 
         shutdown();
@@ -60,6 +80,8 @@ namespace todo {
 
     void Application::initWindow()
     {
+        glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
+
         glfwInit();
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -70,6 +92,24 @@ namespace todo {
 
 
         window_ = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+#ifdef __APPLE__
+        id app = ((id (*)(Class, SEL))objc_msgSend)(
+            (Class)objc_getClass("NSApplication"),
+            sel_registerName("sharedApplication")
+        );
+
+        // Correct cast: method takes (id, SEL, BOOL)
+        ((void (*)(id, SEL, BOOL))objc_msgSend)(
+            app,
+            sel_registerName("activateIgnoringOtherApps:"),
+            YES
+        );
+#endif
+
+        // // Or handle DPI scaling properly:
+        // float xscale, yscale;
+        // glfwGetWindowContentScale(window_, &xscale, &yscale);
+
         glfwSetWindowUserPointer(window_, this);
         glfwSetFramebufferSizeCallback(window_, framebufferResizeCallback);
     }
@@ -80,6 +120,14 @@ namespace todo {
         while (!glfwWindowShouldClose(window_))
         {
             glfwPollEvents();
+
+            // Update audio engine to maintain active sounds
+            audio_.update();
+
+            if (framebufferResized_) {
+                framebufferResized_ = false;
+                graphics_->recreateSwapChain();
+            }
 
             // Begin graphics frame
             graphics_->beginFrame();
@@ -116,6 +164,7 @@ namespace todo {
         imguiRenderer_.reset(); // This will call ImGuiRenderer destructor
         graphics_.reset(); // This will call Graphics destructor
 
+        audio_.shutdown();
         if (window_)
         {
             glfwDestroyWindow(window_);

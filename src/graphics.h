@@ -79,6 +79,7 @@ namespace todo {
         [[nodiscard]] VkQueue getPresentQueue() const;
 
 
+        void recreateSwapChain();
         bool framebufferResized_ = false;
 
     private:
@@ -138,7 +139,6 @@ namespace todo {
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
         void drawFrame();
         void createSyncObjects();
-        void recreateSwapChain();
         void cleanupSwapChain();
         VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool commandPool);
         void EndSingleTimeCommands(

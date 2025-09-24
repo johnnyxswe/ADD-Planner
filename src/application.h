@@ -10,12 +10,14 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "audio_engine.h"
 #include "card_database.h"
-#include "imgui.h"
 #include "glm/vec2.hpp"
 #include "graphics.h"
 #include "imgui_renderer.h"
 #include "spdlog/spdlog.h"
+#include "utilities.h"  // Add this include
+
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -28,7 +30,7 @@ namespace todo {
     {
     public:
         Application()
-            : db_("cards.db") // <--- initialize here, or in constructor body
+            : db_(getDatabasePath()) // <--- initialize here, or in constructor body
         {
         }
 
@@ -37,24 +39,34 @@ namespace todo {
         void mainLoop();
         void shutdown();
 
+        void reloadAppState();
+        void loadCards();
+        void loadProjects();
+
         // Getters for other classes to access what they need
         [[nodiscard]] GLFWwindow *getWindow() const { return window_; }
         [[nodiscard]] Graphics *getGraphics() const { return graphics_.get(); }
 
-        CardDatabase& db() { return db_; }
+        CardDatabase &db() { return db_; }
+        AudioEngine &audio() { return audio_; }
 
         bool framebufferResized_ = true;
 
         // Getters
         void getWindowSize(glm::ivec2 &size) const;
-        [[nodiscard]] std::vector<TodoCard> &getTodoCards() { return todoCards_; }
-        [[nodiscard]] std::vector<TodoCard> &getInProgressCards() { return inProgressCards_; }
-        [[nodiscard]] std::vector<TodoCard> &getDoneCards() { return doneCards_; }
-        [[nodiscard]] std::vector<TodoCard> &getArchivedCards() { return archivedCards_; }
+        [[nodiscard]] const std::vector<TodoCard> &getCards() const { return cards_; }
+        [[nodiscard]] const std::vector<proj::Project> &getProjects() const { return projects_; }
 
     private:
         CardDatabase db_;
+        AudioEngine audio_;
+
         GLFWwindow *window_ = VK_NULL_HANDLE;
+
+        std::vector<TodoCard> cards_{};
+        std::vector<proj::Project> projects_{};
+
+        proj::Project defaultProject_;
 
         std::unique_ptr<Graphics> graphics_;
         std::unique_ptr<ImGuiRenderer> imguiRenderer_;
@@ -64,6 +76,8 @@ namespace todo {
         std::vector<TodoCard> inProgressCards_{};
         std::vector<TodoCard> doneCards_{};
         std::vector<TodoCard> archivedCards_{};
+
+
 
 
         void renderUI();

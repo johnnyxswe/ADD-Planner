@@ -1,6 +1,7 @@
 //
 // Created by Johnny Gonzales on 8/19/25.
 //
+#include <filesystem>
 #include <iostream>
 
 #include "imgui.h"
@@ -11,8 +12,6 @@
 
 int main()
 {
-    std::cout << "Hello World!" << std::endl;
-
     try
     {
         todo::Application app;
